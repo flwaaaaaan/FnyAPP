@@ -184,6 +184,7 @@
   function initNodes() {
     const grid = document.getElementById("node-grid");
     if (!grid) return;
+    grid.textContent = "";
 
     // 使用 DocumentFragment 批量插入，减少重排
     const fragment = document.createDocumentFragment();
@@ -191,10 +192,21 @@
     nodes.forEach((node) => {
       const card = document.createElement("div");
       card.className = "node-card animate-on-scroll";
-      card.innerHTML = `
-        <img src="https://flagcdn.com/w80/${node.code}.png" width="40" alt="${node.name}" class="node-flag">
-        <span class="node-name">${node.name}</span>
-      `;
+
+      const flag = document.createElement("img");
+      flag.src = `img/flags/${node.code}.svg`;
+      flag.width = 40;
+      flag.height = 28;
+      flag.alt = node.name;
+      flag.className = "node-flag";
+      flag.loading = "lazy";
+      flag.decoding = "async";
+
+      const name = document.createElement("span");
+      name.className = "node-name";
+      name.textContent = node.name;
+
+      card.append(flag, name);
       fragment.appendChild(card);
     });
 
@@ -228,10 +240,258 @@
   }
 })();
 
+// 访问 / 下载链接智能测速
+(function () {
+  // 登录官网线路：只填“裸域名”（不带 /#/login），下面 login 目标会自动拼上 suffix。
+  // 备用线路：在下面加一行裸域名即可自动参与测速，例如 "https://v2.fnyun.us"
+  const LOGIN_GATEWAY_DOMAINS = [
+    "https://v.fnyun.us",
+    // "https://v2.fnyun.us",
+  ];
+
+  // iOS 线路：只填“裸域名”（无路径后缀）。
+  // 备用线路：在下面加一行裸域名即可自动参与测速，例如 "https://ios2.fnyun.us"
+  const IOS_MIRROR_DOMAINS = [
+    "https://ios.fnyun.us",
+    //"https://qq.com",
+  ];
+
+  // ①域名与文件名之间的固定路径。文件就在域名根目录时，留空写 "" 即可。
+  //   例："/app/" → 域名/app/文件名 ； "" → 域名/文件名
+  const DOWNLOAD_BASE_PATH = "/app/";
+
+  // ②各平台下载线路（安卓/Win/Mac 各自独立）
+  //   file    = 安装包文件名（换版本只改这里）
+  //   mirrors = 裸域名列表，会自动拼成「域名 + 上面的路径 + 文件名」的直链；加一行 = 多一条测速线路
+  //   links   = 完整链接/网盘分享链，原样使用，也参与测速
+  //             ⚠️ 网盘多为“落地页”（跳过去还要再点一次，非文件直链），且与自有 CDN 非同一文件，
+  //                有可能“测速最快却把用户导去落地页”。仅作备用时按需添加。
+  const DOWNLOADS = {
+    android: {
+      file: "FnCloud-3.2.6-android-arm64-v8a.apk",
+      mirrors: ["https://app.fnylink.xyz", "https://app.fnyun.us"],
+      links: [],
+    },
+    windows: {
+      file: "FnCloud-3.2.6-windows-amd64-setup.exe",
+      mirrors: ["https://app.fnylink.xyz", "https://app.fnyun.us"],
+      links: [],
+    },
+    macosM: {
+      file: "FnCloud-3.2.6-macos-arm64.dmg", // Apple 芯片（M 系列，arm64）
+      mirrors: ["https://app.fnylink.xyz", "https://app.fnyun.us"],
+      links: [],
+    },
+    macosIntel: {
+      file: "FnCloud-3.2.6-macos-amd64.dmg", // Intel 芯片（amd64）
+      mirrors: ["https://app.fnylink.xyz", "https://app.fnyun.us"],
+      links: [],
+    },
+  };
+
+  // 把「路径 + 文件名」拼成 suffix，自动补斜杠：""/"/app/"/"app"/"/app" 都正确
+  function joinFile(file) {
+    const mid = String(DOWNLOAD_BASE_PATH).replace(/^\/+|\/+$/g, "");
+    return mid ? `/${mid}/${file}` : `/${file}`;
+  }
+
+  const DOWNLOAD_TARGETS = {
+    login: {
+      domains: LOGIN_GATEWAY_DOMAINS,
+      suffix: "/#/login",
+      preserveParams: true,
+    },
+    ios: {
+      domains: IOS_MIRROR_DOMAINS,
+      preserveParams: true,
+    },
+  };
+
+  // 由上面的 DOWNLOADS 生成四个下载目标（mirrors→拼直链，links→原样）
+  Object.keys(DOWNLOADS).forEach((platform) => {
+    const cfg = DOWNLOADS[platform];
+    DOWNLOAD_TARGETS[platform] = {
+      urls: cfg.links || [],
+      domains: cfg.mirrors || [],
+      suffix: joinFile(cfg.file),
+      preserveParams: true,
+    };
+  });
+
+  const speedCache = new Map();
+  const SPEED_TEST_TIMEOUT = 650;
+  const STATUS_DELAY = 160;
+  let statusTimer = null;
+  let statusEl = null;
+
+  function normalizeDomain(domain) {
+    return domain.replace(/\/+$/, "");
+  }
+
+  function appendCurrentParams(url) {
+    if (!window.location.search) return url;
+
+    try {
+      const targetUrl = new URL(url, window.location.href);
+      const currentParams = new URLSearchParams(window.location.search);
+      currentParams.forEach((value, key) => {
+        if (!targetUrl.searchParams.has(key)) {
+          targetUrl.searchParams.set(key, value);
+        }
+      });
+      return targetUrl.toString();
+    } catch (error) {
+      return url;
+    }
+  }
+
+  function buildCandidates(platform) {
+    const target = DOWNLOAD_TARGETS[platform];
+    if (!target) return [];
+
+    const urls = [];
+    if (Array.isArray(target.urls)) {
+      urls.push(...target.urls);
+    }
+
+    if (Array.isArray(target.domains)) {
+      const suffix = target.suffix || "";
+      target.domains.forEach((domain) => {
+        urls.push(`${normalizeDomain(domain)}${suffix}`);
+      });
+    }
+
+    const uniqueUrls = [...new Set(urls)];
+    return target.preserveParams ? uniqueUrls.map(appendCurrentParams) : uniqueUrls;
+  }
+
+  function withProbeCacheBuster(url) {
+    try {
+      const probeUrl = new URL(url, window.location.href);
+      probeUrl.searchParams.set("_speed", Date.now().toString(36));
+      return probeUrl.toString();
+    } catch (error) {
+      return url;
+    }
+  }
+
+  function probeUrl(url) {
+    const cached = speedCache.get(url);
+    if (cached && Date.now() - cached.checkedAt < 300000) {
+      return Promise.resolve({ url, time: cached.time });
+    }
+
+    const start = performance.now();
+    const canAbort = typeof AbortController !== "undefined";
+    const controller = canAbort ? new AbortController() : null;
+    const timer = canAbort ? window.setTimeout(() => controller.abort(), SPEED_TEST_TIMEOUT) : null;
+
+    return fetch(withProbeCacheBuster(url), {
+      method: "HEAD",
+      mode: "no-cors",
+      cache: "no-store",
+      signal: controller ? controller.signal : undefined,
+    })
+      .then(() => {
+        const time = performance.now() - start;
+        speedCache.set(url, { time, checkedAt: Date.now() });
+        return { url, time };
+      })
+      .finally(() => {
+        if (timer) window.clearTimeout(timer);
+      });
+  }
+
+  async function pickFastestUrl(platform) {
+    const candidates = buildCandidates(platform);
+    if (candidates.length === 0) return "";
+    if (candidates.length === 1) return candidates[0];
+
+    const results = [];
+    const probes = candidates.map((url) =>
+      probeUrl(url)
+        .then((result) => {
+          results.push(result);
+          return result;
+        })
+        .catch(() => null)
+    );
+
+    await Promise.race([
+      Promise.all(probes),
+      new Promise((resolve) => window.setTimeout(resolve, SPEED_TEST_TIMEOUT)),
+    ]);
+
+    if (results.length === 0) return candidates[0];
+    results.sort((a, b) => a.time - b.time);
+    return results[0].url;
+  }
+
+  function getGatewayStatus() {
+    if (statusEl) return statusEl;
+
+    statusEl = document.createElement("div");
+    statusEl.className = "gateway-status";
+    statusEl.innerHTML = `
+      <span class="gateway-status-dot"></span>
+      <span>正在匹配最优线路...</span>
+    `;
+    document.body.appendChild(statusEl);
+    return statusEl;
+  }
+
+  function showGatewayStatus() {
+    window.clearTimeout(statusTimer);
+    statusTimer = window.setTimeout(() => {
+      getGatewayStatus().classList.add("is-visible");
+    }, STATUS_DELAY);
+  }
+
+  function hideGatewayStatus() {
+    window.clearTimeout(statusTimer);
+    if (statusEl) statusEl.classList.remove("is-visible");
+  }
+
+  function setTestingState(link, testing) {
+    if (!link) return;
+    const title = link.querySelector(".store-badge-title");
+    if (testing) {
+      link.dataset.originalTitle = title ? title.textContent : "";
+      link.classList.add("is-testing");
+      if (title) title.textContent = "智能测速中...";
+    } else {
+      link.classList.remove("is-testing");
+      if (title && link.dataset.originalTitle) {
+        title.textContent = link.dataset.originalTitle;
+      }
+    }
+  }
+
+  async function routeToFastest(e, platform) {
+    if (e) e.preventDefault();
+    const link = e && e.currentTarget instanceof HTMLElement ? e.currentTarget : null;
+
+    try {
+      setTestingState(link, true);
+      showGatewayStatus();
+      const url = await pickFastestUrl(platform);
+      if (url) {
+        window.location.href = url;
+      }
+    } finally {
+      hideGatewayStatus();
+      setTestingState(link, false);
+    }
+  }
+
+  window.smartGateway = routeToFastest;
+  window.smartDownload = routeToFastest;
+  window.getFastestDownloadUrl = pickFastestUrl;
+})();
+
 // 下载教程弹窗
 (function () {
   const cur = "zh-CN";
-  const DL_URL = "https://ios.fnyun.us";
   const DL_TEXT = {
     "zh-CN": {
       title: "下载前请注意",
@@ -418,7 +678,7 @@
 
   window.confirmDl = function confirmDl() {
     window.closeDlModal();
-    window.open(DL_URL, "_blank");
+    window.smartDownload(null, "ios");
   };
 
   window.showMacModal = function showMacModal(e) {
@@ -479,4 +739,3 @@
     }
   });
 })();
-
