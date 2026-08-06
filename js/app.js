@@ -258,7 +258,7 @@
 
   // ①域名与文件名之间的固定路径。文件就在域名根目录时，留空写 "" 即可。
   //   例："/app/" → 域名/app/文件名 ； "" → 域名/文件名
-  const DOWNLOAD_BASE_PATH = "/app/";
+  const DOWNLOAD_BASE_PATH = "";
 
   // ②各平台下载线路（安卓/Win/Mac 各自独立）
   //   file    = 安装包文件名（换版本只改这里）
