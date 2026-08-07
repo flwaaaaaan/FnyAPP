@@ -425,7 +425,8 @@ button {
   box-shadow: 0 32px 60px rgba(0, 0, 0, 0.18);
   transform: none;
   transition: box-shadow 0.3s ease;
-  contain: layout paint;
+  /* 用 contain:paint 会把圆角裁成直角，导致内层卡片四角溢出边框；改用 overflow 裁剪 */
+  overflow: hidden;
 }
 
 .hero-device-frame:hover {
