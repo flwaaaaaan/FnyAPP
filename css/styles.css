@@ -420,13 +420,15 @@ button {
   flex: 0 0 auto;
   margin: 0;
   background: linear-gradient(135deg, #d4d4dd, #fafafa);
-  padding: 10px;
-  border-radius: 40px;
+  padding: 12px;
+  border-radius: 46px;
   box-shadow: 0 32px 60px rgba(0, 0, 0, 0.18);
-  transform: none;
   transition: box-shadow 0.3s ease;
   /* 用 contain:paint 会把圆角裁成直角，导致内层卡片四角溢出边框；改用 overflow 裁剪 */
   overflow: hidden;
+  /* Safari 修复：子元素含 isolation/filter 时圆角裁剪会失效，强制外框独立合成层 */
+  transform: translateZ(0);
+  -webkit-transform: translateZ(0);
 }
 
 .hero-device-frame:hover {
@@ -434,7 +436,8 @@ button {
 }
 
 .hero-device-screen {
-  border-radius: 32px;
+  /* 与外框同心：外框 46 − 内边距 12 = 34，四角贴合不溢出 */
+  border-radius: 34px;
   background: linear-gradient(135deg, #1a1a2e 0%, #0f0f1e 50%, #16213e 100%);
   padding: 20px 18px;
   position: relative;
@@ -442,6 +445,11 @@ button {
   color: #ffffff;
   min-height: 360px;
   isolation: isolate;
+  /* Safari 修复：强制把内部模糊渐变按圆角裁剪，否则四角会被填成直角而溢出 */
+  transform: translateZ(0);
+  -webkit-transform: translateZ(0);
+  -webkit-mask-image: -webkit-radial-gradient(white, black);
+  mask-image: radial-gradient(white, black);
 }
 
 /* 轻量化渐变背景 - 保留原多彩光斑效果 */
