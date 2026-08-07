@@ -269,22 +269,22 @@
   const DOWNLOADS = {
     android: {
       file: "FnCloud-3.2.6-android-arm64-v8a.apk",
-      mirrors: ["https://app.fnylink.xyz", "https://app.fnyun.us"],
+      mirrors: ["https://app.fnyun.us"],
       links: [],
     },
     windows: {
       file: "FnCloud-3.2.6-windows-amd64-setup.exe",
-      mirrors: ["https://app.fnylink.xyz", "https://app.fnyun.us"],
+      mirrors: ["https://app.fnyun.us"],
       links: [],
     },
     macosM: {
       file: "FnCloud-3.2.6-macos-arm64.dmg", // Apple 芯片（M 系列，arm64）
-      mirrors: ["https://app.fnylink.xyz", "https://app.fnyun.us"],
+      mirrors: ["https://app.fnyun.us"],
       links: [],
     },
     macosIntel: {
       file: "FnCloud-3.2.6-macos-amd64.dmg", // Intel 芯片（amd64）
-      mirrors: ["https://app.fnylink.xyz", "https://app.fnyun.us"],
+      mirrors: ["https://app.fnyun.us"],
       links: [],
     },
   };
