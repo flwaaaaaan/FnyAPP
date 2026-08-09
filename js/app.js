@@ -270,22 +270,22 @@
     android: {
       file: "FnCloud-3.2.6-android-arm64-v8a.apk",
       mirrors: ["https://app.fnyun.us"],
-      links: [],
+      links: ["https://axisnow.gh-proxy.org/https://github.com/FnCloud-APP/APP/releases/download/3.2.7/FnCloud-3.2.7-android-arm64-v8a.apk"],
     },
     windows: {
       file: "FnCloud-3.2.6-windows-amd64-setup.exe",
       mirrors: ["https://app.fnyun.us"],
-      links: [],
+      links: ["https://axisnow.gh-proxy.org/https://github.com/FnCloud-APP/APP/releases/download/3.2.7/FnCloud-3.2.7-windows-amd64-setup.exe"],
     },
     macosM: {
       file: "FnCloud-3.2.6-macos-arm64.dmg", // Apple 芯片（M 系列，arm64）
       mirrors: ["https://app.fnyun.us"],
-      links: [],
+      links: ["https://axisnow.gh-proxy.org/https://github.com/FnCloud-APP/APP/releases/download/3.2.7/FnCloud-3.2.7-macos-arm64.dmg"],
     },
     macosIntel: {
       file: "FnCloud-3.2.6-macos-amd64.dmg", // Intel 芯片（amd64）
       mirrors: ["https://app.fnyun.us"],
-      links: [],
+      links: ["https://axisnow.gh-proxy.org/https://github.com/FnCloud-APP/APP/releases/download/3.2.7/FnCloud-3.2.7-macos-amd64.dmg"],
     },
   };
 
