@@ -1331,7 +1331,7 @@ button {
     width: 250%; /* 足够大以覆盖旋转后的边缘 */
     height: 250%;
     /* ！！请将此处替换为您文件夹中的背景图路径，例如 images/bg-apps.jpg ！！ */
-    background-image: url('https://tencentcdna.production.link3.cc/user_create_images/link3_1742225483539/multiple_images/1766204875935'); 
+    background-image: url('https://img.fnyun.site/i/2026/10/31/hcm57h.webp'); 
     background-repeat: repeat;
     background-size: 2500px auto; 
     transform: rotate(-7deg); /* 倾斜 */
